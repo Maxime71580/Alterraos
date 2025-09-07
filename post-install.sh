@@ -1,57 +1,65 @@
 #!/bin/bash
-# post-install.sh – Script post-installation pour AlterraOS
-# A lancer depuis /Alterraos/install
-
 set -e
 
-BASE_DIR="$(dirname "$(realpath "$0")")"  # /Alterraos/install
+# Détection du dossier du script (pour que les chemins soient toujours corrects)
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
-echo "=== Vérification des gestionnaires de paquets ==="
-command -v pacman >/dev/null 2>&1 || { echo "Pacman non trouvé. Arrêt."; exit 1; }
-command -v yay >/dev/null 2>&1 || echo "Yay non trouvé, optionnel."
-command -v apt >/dev/null 2>&1 || echo "Apt non trouvé, optionnel."
+echo "Installation des paquets essentiels..."
+sudo pacman -Syu --noconfirm base-devel git wget curl
 
-echo "=== Installation de fastfetch et lolcat ==="
-sudo pacman -S --noconfirm fastfetch lolcat || yay -S --noconfirm fastfetch lolcat
+echo "Installation des applications réseau / sécurité..."
+sudo pacman -S --noconfirm nmap wireshark-qt
 
-# --- INSTALLATION DES APPS ---
-echo "=== Installation des applications ==="
-bash "$BASE_DIR/../apps/install-multimedia.sh" --full
-bash "$BASE_DIR/../apps/install-dev.sh" --full
-bash "$BASE_DIR/../apps/install-gaming.sh" --stable
-bash "$BASE_DIR/../apps/install-network.sh" --stable
+echo "Applications réseau / sécurité installées !"
 
-# --- CONFIGURATION DU WALLPAPER ---
-echo "=== Configuration du wallpaper ==="
-mkdir -p "$HOME/Pictures"
-cp "$BASE_DIR/../alterra.png" "$HOME/Pictures/alterra-wallpaper.png"
-echo "Wallpaper copié : $HOME/Pictures/alterra-wallpaper.png"
+echo "Configuration du wallpaper par défaut..."
+WALLPAPER="$SCRIPT_DIR/../config/wallpapers/alterra-default.jpg"
+if [ -f "$WALLPAPER" ]; then
+    mkdir -p "$HOME/Pictures"
+    cp "$WALLPAPER" "$HOME/Pictures/"
+    echo "Wallpaper copié dans ~/Pictures."
+else
+    echo "⚠️ Wallpaper introuvable : $WALLPAPER"
+fi
 
-# --- CONFIGURATION DU TERMINAL KITTY ---
-echo "=== Configuration du terminal Kitty ==="
-mkdir -p "$HOME/.config/kitty"
-cat <<EOL > "$HOME/.config/kitty/kitty.conf"
-shell /bin/bash -c "fastfetch | lolcat; exec /bin/bash"
-EOL
+echo "Configuration du terminal Kitty..."
+if command -v kitty >/dev/null 2>&1; then
+    mkdir -p "$HOME/.config/kitty"
+    cp "$SCRIPT_DIR/../config/kitty/kitty.conf" "$HOME/.config/kitty/" 2>/dev/null || true
+else
+    echo "⚠️ Kitty non installé."
+fi
 
-# --- DRIVERS ET RÉSEAU ---
-echo "=== Installation des drivers ==="
-bash "$BASE_DIR/../Drivers/gpu-detect.sh" --auto
-bash "$BASE_DIR/../Drivers/network-detect.sh" --auto
-bash "$BASE_DIR/../Drivers/optional-drivers.sh" --all
+echo "Application du thème KDE par défaut et multi-écrans..."
+if command -v plasmashell >/dev/null 2>&1; then
+    bash "$SCRIPT_DIR/../config/kde-settings/apply-settings.sh"
+else
+    echo "⚠️ KDE non détecté."
+fi
 
-# --- MODE LABO ---
-read -p "Voulez-vous activer le mode labo ? (y/n): " LABO
-if [[ "$LABO" =~ ^[Yy]$ ]]; then
-    bash "$BASE_DIR/setup-labo.sh" --on
+echo "Activation VPN et firewall..."
+bash "$SCRIPT_DIR/../config/network-settings/enable.sh"
+
+echo "Détection et installation GPU..."
+bash "$SCRIPT_DIR/../drivers/gpu-detect.sh"
+
+echo "Configuration réseau..."
+bash "$SCRIPT_DIR/../drivers/network-detect.sh"
+
+echo "Installation drivers périphériques optionnels..."
+bash "$SCRIPT_DIR/../drivers/optional-drivers.sh"
+
+echo "Voulez-vous activer le mode labo ? (y/n): "
+read enable_labo
+if [[ "$enable_labo" == "y" ]]; then
+    bash "$SCRIPT_DIR/../install/setup-labo.sh"
     echo "Mode labo activé !"
 else
     echo "Mode stable activé."
 fi
 
-# --- MISE À JOUR SYSTÈME ---
-echo "=== Mise à jour complète du système ==="
-sudo pacman -Syu --noconfirm
+echo "Mise à jour complète du système..."
+bash "$SCRIPT_DIR/../bin/update-system.sh"
 
-echo "=== Installation et configuration terminées ! ==="
+echo "Installation et configuration terminées !"
 echo "Vous pouvez maintenant redémarrer votre système."
