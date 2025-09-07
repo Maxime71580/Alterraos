@@ -1,10 +1,10 @@
 #!/bin/bash
 # post-install.sh – Script post-installation pour AlterraOS
-# A lancer depuis /alterra-os/install
+# A lancer depuis /Alterraos/install
 
 set -e
 
-BASE_DIR="$(dirname "$(realpath "$0")")"  # /alterra-os/install
+BASE_DIR="$(dirname "$(realpath "$0")")"  # /Alterraos/install
 
 echo "=== Vérification des gestionnaires de paquets ==="
 command -v pacman >/dev/null 2>&1 || { echo "Pacman non trouvé. Arrêt."; exit 1; }
@@ -21,26 +21,21 @@ bash "$BASE_DIR/../apps/install-dev.sh" --full
 bash "$BASE_DIR/../apps/install-gaming.sh" --stable
 bash "$BASE_DIR/../apps/install-network.sh" --stable
 
-# --- CONFIGURATION SYSTEME ---
+# --- CONFIGURATION DU WALLPAPER ---
 echo "=== Configuration du wallpaper ==="
 mkdir -p "$HOME/Pictures"
 cp "$BASE_DIR/../alterra.png" "$HOME/Pictures/alterra-wallpaper.png"
+echo "Wallpaper copié : $HOME/Pictures/alterra-wallpaper.png"
 
-# Si KDE Plasma est installé
-if command -v plasmashell >/dev/null 2>&1; then
-    echo "=== Application du wallpaper sur KDE ==="
-    # Petit script pour appliquer l'image comme fond d'écran
-    # Nécessite 'plasma-apply-wallpaperimage' ou script équivalent
-fi
-
-echo "=== Configuration du terminal ==="
+# --- CONFIGURATION DU TERMINAL KITTY ---
+echo "=== Configuration du terminal Kitty ==="
 mkdir -p "$HOME/.config/kitty"
 cat <<EOL > "$HOME/.config/kitty/kitty.conf"
 shell /bin/bash -c "fastfetch | lolcat; exec /bin/bash"
 EOL
 
 # --- DRIVERS ET RÉSEAU ---
-echo "=== Installation drivers ==="
+echo "=== Installation des drivers ==="
 bash "$BASE_DIR/../Drivers/gpu-detect.sh" --auto
 bash "$BASE_DIR/../Drivers/network-detect.sh" --auto
 bash "$BASE_DIR/../Drivers/optional-drivers.sh" --all
@@ -49,12 +44,14 @@ bash "$BASE_DIR/../Drivers/optional-drivers.sh" --all
 read -p "Voulez-vous activer le mode labo ? (y/n): " LABO
 if [[ "$LABO" =~ ^[Yy]$ ]]; then
     bash "$BASE_DIR/setup-labo.sh" --on
+    echo "Mode labo activé !"
 else
     echo "Mode stable activé."
 fi
 
-# --- FIN ---
+# --- MISE À JOUR SYSTÈME ---
 echo "=== Mise à jour complète du système ==="
 sudo pacman -Syu --noconfirm
 
 echo "=== Installation et configuration terminées ! ==="
+echo "Vous pouvez maintenant redémarrer votre système."
